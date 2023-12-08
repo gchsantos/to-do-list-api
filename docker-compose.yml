@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+
+  # api:
+  #   build:
+  #     context: .
+  #   image: to_do_list_api
+  #   command: './start-server.sh'
+  #   env_file:
+  #     - .local.env
+  #   environment:
+  #     DJANGO_SETTINGS_MODULE: to_do_list_api.settings.local
+  #     MODE: local
+  #   ports:
+  #     - 8000:8000
+  #   networks:
+  #     - back-tier
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+
+  postgres:
+    image: postgres:alpine
+    restart: always
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data"
+    env_file:
+      - .local.env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U gchsantos -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 5432:5432
+    networks:
+      - back-tier
+
+  adminer:
+    image: adminer
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+    networks:
+      - back-tier
+
+  
+volumes:
+  postgres-data:
+
+networks:
+  back-tier:
