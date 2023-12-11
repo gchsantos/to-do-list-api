@@ -1,7 +1,7 @@
 from enum import IntEnum
 
 
-class LINE_STATUS(IntEnum):
+class TASK_STATUS(IntEnum):
     PENDING = 1
     CONCLUDED = 2
     CANCELLED = 3
