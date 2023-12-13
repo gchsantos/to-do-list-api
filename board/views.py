@@ -1,70 +1,70 @@
 import json
-from typing import List, Dict
 
 from django.db import transaction
-from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from dacite.exceptions import MissingValueError
+from dacite import from_dict
 
-from .messages import TaskInsertDataMessage, BulkTaskInsertDataMessage, TaskDataMessage
+from .messages import (
+    TaskInsertDataMessage,
+    TaskInsertDataReturnMessage,
+    BulkTaskInsertDataReturnMessage,
+)
 from .exceptions import (
     BaseException,
     MissingValueException,
+    StatusDoesNotExistException,
 )
 from .models import Task
 
 class BoardManager(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, **kwargs):
         try:
             try:
                 if isinstance(request.data, dict):
-                    insert_message = TaskDataMessage.from_json(json.dumps(request.data))
-                elif isinstance(request.data, list):
-                    insert_message = BulkTaskInsertDataMessage(request.data)
+                    new_task = from_dict(TaskInsertDataMessage, request.data)
                     
-                print(insert_message)
+                    with transaction.atomic():
+                        print(Task.objects.create(
+                            user=request.user,
+                            **new_task.to_dict()  
+                        ))
+
+                    return Response(
+                        json.loads(TaskInsertDataReturnMessage().to_json()),
+                        status=status.HTTP_200_OK
+                    )
+
+                elif isinstance(request.data, list):
+                    new_tasks = []
+                    for task in request.data:
+                        data_task = from_dict(TaskInsertDataMessage, task)
+                        new_tasks.append(data_task)
+
+                    bulk_tasks = []
+                    with transaction.atomic():
+                        for task in new_tasks:
+                            bulk_tasks.append(Task(
+                                user=request.user,
+                                **task.to_dict()
+                            ))
+                        print(Task.objects.bulk_create(bulk_tasks))
+
+                    return Response(
+                        json.loads(BulkTaskInsertDataReturnMessage().to_json()),
+                        status=status.HTTP_200_OK
+                    )
+
             except MissingValueError as e:
-                return Response(
-                    MissingValueException(str(e)).message,
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # generator_cnjs: Dict[str, List[BatchLine]] = dict()
-
-            # for cnj in insert_message.cnjs:
-            #     try:
-            #         uf = get_uf_by_cnj(cnj)
-            #         if not uf:
-            #             raise UnsupportedCNJException(cnj)
-
-            #         generator_cnjs.setdefault(uf, []).append(BatchLine(cnj=cnj, uf=uf))
-            #     except (UnsupportedCNJException, ValueError) as e:
-            #         message = (
-            #             e.message
-            #             if hasattr(e, "message")
-            #             else UnsupportedCNJException(cnj).message
-            #         )
-            #         return Response(
-            #             message,
-            #             status=status.HTTP_400_BAD_REQUEST,
-            #         )
-
-            # with transaction.atomic():
-            #     generator = BatchGenerator.objects.create(
-            #         refresh_lawsuit=insert_message.refresh_lawsuit,
-            #         user=request.user,
-            #     )
-            #     generator.generate(generator_cnjs, insert_message.public_consultation)
-
-            # return_message = json.loads(
-            #     BatchInsertDataReturnMessage(generator.consultation.id).to_json()
-            # )
-            return Response(json.loads(insert_message.to_json()), status=status.HTTP_200_OK)
+                message = MissingValueException(str(e)).message
+                return Response(message, status=status.HTTP_400_BAD_REQUEST)
+            except StatusDoesNotExistException as e:
+                return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response(
