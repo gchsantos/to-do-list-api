@@ -4,7 +4,15 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
 
-from .constants import TASK_STATUS
+
+class TaskStatus(models.IntegerChoices):
+    PENDING = 1, "The task is pending"
+    CONCLUDED = 2, "The task has been completed"
+    CANCELED = 3, "The task was canceled"
+
+    @classmethod
+    def get_status_by_name(cls, label: str):
+        return cls._member_map_[label.upper()]
 
 
 class Task(models.Model):
@@ -12,7 +20,7 @@ class Task(models.Model):
     title = models.CharField(max_length=50)
     description = models.TextField(null=True)
     status = models.SmallIntegerField(
-        choices=TASK_STATUS.get_status(), default=TASK_STATUS.PENDING
+        choices=TaskStatus.choices, default=TaskStatus.PENDING
     )
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="tasks"
@@ -20,11 +28,19 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True)
 
+    @property
+    def task_status(self) -> TaskStatus:
+        return TaskStatus(self.status)
 
-    def get_task_status(self) -> TASK_STATUS:
-        return TASK_STATUS(self.status).name
-
-    def update_status(self, status: TASK_STATUS):
+    def update_status(self, status: TaskStatus):
         self.status = status
         self.updated_at = timezone.now()
         self.save()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="%(app_label)s_%(class)s_status_valid",
+                check=models.Q(status__in=TaskStatus.values),
+            )
+        ]
