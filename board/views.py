@@ -138,13 +138,15 @@ class BoardManager(APIView):
     def put(self, request, **kwargs):
         try:
             try:
-                if isinstance(request.data, dict):
+                request_data = request.data if hasattr(request, 'data') else {}
+                if isinstance(request_data, dict):
                     task_id = kwargs.get('task_id')
                     try:
                         update_task = from_dict(
                             TaskUpdateParamsDataMessage, {'task': task_id, 
-                                'status': request.data.get('status'),
-                                'user': request.user}
+                                'user': request.user,
+                                **request_data,
+                            }
                         )
                     except Task.DoesNotExist as e:
                         message = TaskDoesNotExistException(task_id).message
