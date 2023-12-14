@@ -56,7 +56,7 @@ class BatchManagerViewTest(TestCase):
         expected_task_1_description = 'Não esquecer de usar token!'
         expected_task_2_title = 'Criar .env com as credenciais locais'
         expected_task_2_description = None
-        expected_status = 'PENDING'
+        expected_status = TaskStatus.PENDING.name
         expected_task_keys =  [
             'id', 'title', 'description', 'status', 'statusLabel', 'createdAt',
             'updatedAt'
@@ -87,7 +87,7 @@ class BatchManagerViewTest(TestCase):
         expected_status_code = 200
         expected_title = 'Criar a rota de autenticação'
         expected_description = 'Não esquecer de usar token!'
-        expected_status = 'PENDING'
+        expected_status = TaskStatus.PENDING.name
 
         response = self.view.get(self.request, task_id=task_id)
 
@@ -123,7 +123,7 @@ class BatchManagerViewTest(TestCase):
         self.request.query_params = {
             'title__icontains': 'criar',
             'description__icontains': 'token',
-            'status': 'pending'
+            'status': TaskStatus.PENDING.name
         }
 
         expected_status_code = 200
@@ -171,7 +171,7 @@ class BatchManagerViewTest(TestCase):
         self.assertTrue(task)
 
     def test_post_with_specific_status(self):
-        """ When request to create a task without specific your status \
+        """ When request to create a task specifying your status \
         Then create a pending task and returns success message \
         """
         
@@ -186,7 +186,7 @@ class BatchManagerViewTest(TestCase):
         self.request.data = {
             "title": "Criar endpoint para exclusão de tarefas",
             "description": "Criar exclusão específica e em massa",
-            "status": "concluded"
+            "status": TaskStatus.CONCLUDED.name
         }
 
         response = self.view.post(self.request)
@@ -206,24 +206,74 @@ class BatchManagerViewTest(TestCase):
         self.assertTrue(task)
 
     def test_post_bulk_task(self):
-        """ When request to create a task without specific your status \
-        Then create a pending task and returns success message \
+        """ When request to create multiple tasks through an array \
+        Then create all the tasks and returns success message \
         """
         
         expected_status_code = 200
         expected_res_type = 'BulkTaskInsert'
         expected_res_msg = 'The tasks was inserted in your board successfully'
-        expected_res_description = 'Insertion of task in user board'
-        expected_task_title = 'Criar endpoint para exclusão de tarefas'
-        expected_task_description = 'Criar exclusão específica e em massa'
-        expected_task_status = TaskStatus.PENDING
+        expected_tasks_quantity = 3
 
-        self.request.data = [{
-            "title": "Criar endpoint para exclusão de tarefas",
-            "description": "Criar exclusão específica e em massa",
-        }]
+        self.request.data = [
+            {
+                "title": "bulk title 1",
+                "description": "bulk description 1",
+                "status": TaskStatus.PENDING.name,
+            },
+            {
+                "title": "bulk title 2",
+                "description": "bulk description 2",
+                "status": TaskStatus.CONCLUDED.name,
+            },
+            {
+                "title": "bulk title 3",
+                "description": "bulk description 3",
+                "status": TaskStatus.CANCELED.name,
+            },
+        ]
 
         response = self.view.post(self.request)
+
+        self.assertEqual(expected_status_code, response.status_code)
+        self.assertEqual(expected_res_type, response.data.get('type'))
+        self.assertEqual(expected_res_msg, response.data.get('message'))
+        
+
+        tasks = Task.objects.filter(
+            title__icontains='bulk',
+            description__icontains='bulk',
+        )
+        self.assertEqual(expected_tasks_quantity, len(tasks))
+
+        titles = [task.title for task in tasks]
+        description = [task.description for task in tasks]
+        status = [task.status for task in tasks]
+
+        self.assertTrue((titles[0] != titles[1] != titles[2]))
+        self.assertTrue((description[0] != description[1] != description[2]))
+        self.assertTrue((status[0] != status[1] != status[2]))
+
+    def test_put(self):
+        """ When request to update a task without specific your status \
+        Then change for concluded task and returns success message \
+        """
+        
+        expected_status_code = 200
+        expected_res_type = 'TaskUpdate'
+        expected_res_msg = 'The task was updated successfully'
+        expected_res_description = 'Updating of a task in user board'
+        expected_old_status = TaskStatus.PENDING
+        expected_new_status = TaskStatus.CONCLUDED
+
+        task = Task.objects.create(
+            title='Realizar um stress test na api',
+            user=self.user
+        )
+        task_id = str(task.id)
+        self.assertEqual(expected_old_status, task.status)
+
+        response = self.view.put(self.request, task_id=task_id)
 
         self.assertEqual(expected_status_code, response.status_code)
         self.assertEqual(expected_res_type, response.data.get('type'))
@@ -232,9 +282,78 @@ class BatchManagerViewTest(TestCase):
             expected_res_description, response.data.get('description')
         )
 
-        task = Task.objects.filter(
-            title=expected_task_title,
-            description=expected_task_description,
-            status=expected_task_status,
+        updated_task = Task.objects.get(id=task_id)
+        self.assertEqual(expected_new_status, updated_task.status)
+
+    def test_put_with_specific_status(self):
+        """ When request to update a task specifying your status \
+        Then change the tasks status and returns success message \
+        """
+        
+        expected_status_code = 200
+        expected_res_type = 'TaskUpdate'
+        expected_res_msg = 'The task was updated successfully'
+        expected_res_description = 'Updating of a task in user board'
+        expected_old_status = TaskStatus.PENDING
+        expected_new_status = TaskStatus.CONCLUDED
+
+        task = Task.objects.create(
+            title='Realizar um stress test na api',
+            user=self.user
         )
-        self.assertTrue(task)
+        task_id = str(task.id)
+        self.assertEqual(expected_old_status, task.status)
+
+        self.request.data = {"status": TaskStatus.CONCLUDED.name}
+        response = self.view.put(self.request, task_id=task_id)
+
+        self.assertEqual(expected_status_code, response.status_code)
+        self.assertEqual(expected_res_type, response.data.get('type'))
+        self.assertEqual(expected_res_msg, response.data.get('message'))
+        self.assertEqual(
+            expected_res_description, response.data.get('description')
+        )
+
+        updated_task = Task.objects.get(id=task_id)
+        self.assertEqual(expected_new_status, updated_task.status)
+
+    def test_put_bulk_task(self):
+        """ When request to update multiple tasks without specifying status \
+        Then update all the tasks to concluded and returns success message \
+        """
+        
+        expected_status_code = 200
+        expected_res_type = 'BulkTaskUpdate'
+        expected_res_msg = 'The tasks was updated successfully'
+        expected_res_description = 'Multiple tasks update in user board'
+        expected_tasks_quantity = 3
+        expected_new_tasks_status = [TaskStatus.CONCLUDED] * 3
+
+        mocked_tasks = [
+            {"title": "bulk update 1"},
+            {"title": "bulk update 2"},
+            {
+                "title": "bulk update 3", 
+                "status": TaskStatus.CANCELED
+            },
+        ]
+
+        tasks = create_mocked_tasks(mocked_tasks, self.user)
+        self.request.data = [{'task': str(task.id)} for task in tasks]
+        response = self.view.put(self.request)
+        
+        self.assertEqual(expected_status_code, response.status_code)
+        self.assertEqual(expected_res_type, response.data.get('type'))
+        self.assertEqual(expected_res_msg, response.data.get('message'))
+        self.assertEqual(
+            expected_res_description, response.data.get('description')
+        )
+
+        tasks = Task.objects.filter(title__icontains='bulk update')
+        self.assertEqual(expected_tasks_quantity, len(tasks))
+
+        titles = [task.title for task in tasks]
+        status = [task.task_status for task in tasks]
+        
+        self.assertTrue((titles[0] != titles[1] != titles[2]))
+        self.assertListEqual(expected_new_tasks_status, status)
