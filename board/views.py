@@ -98,11 +98,12 @@ class BoardManager(APIView):
     @method_decorator(cache_page(CACHE_TTL))
     def get(self, request, **kwargs):
         try:
-
             task_id = kwargs.get('task_id')
             if task_id:
                 try:
-                    user_tasks = [Task.objects.get(id=task_id)]
+                    user_tasks = [Task.objects.get(
+                        id=task_id, user=request.user
+                    )]
                 except Task.DoesNotExist as e:
                     message = TaskDoesNotExistException(task_id).message
                     return Response(
@@ -138,7 +139,9 @@ class BoardManager(APIView):
                     task_id = kwargs.get('task_id')
                     try:
                         update_task = from_dict(
-                            TaskUpdateParamsDataMessage, {'task': task_id}
+                            TaskUpdateParamsDataMessage, {'task': task_id, 
+                                'status': request.data.get('status'),
+                                'user': request.user}
                         )
                     except Task.DoesNotExist as e:
                         message = TaskDoesNotExistException(task_id).message
@@ -157,6 +160,8 @@ class BoardManager(APIView):
                 elif isinstance(request.data, list):
                     update_tasks = []
                     for task in request.data:
+                        task['user'] = request.user
+                        print('!!!!!!!!!!', task)
                         new_params = from_dict(
                             TaskUpdateParamsDataMessage, task
                         )
@@ -191,7 +196,8 @@ class BoardManager(APIView):
                     task_id = kwargs.get('task_id')
                     try:
                         cancel_task = from_dict(
-                            TaskCancelParamsDataMessage, {'task': task_id}
+                            TaskCancelParamsDataMessage, 
+                            {'task': task_id, 'user': request.user}
                         )
                     except Task.DoesNotExist as e:
                         message = TaskDoesNotExistException(task_id).message
@@ -211,7 +217,8 @@ class BoardManager(APIView):
                     update_tasks = []
                     for task_id in request.data:
                         new_params = from_dict(
-                            TaskUpdateParamsDataMessage, {'task': task_id}
+                            TaskUpdateParamsDataMessage,
+                            {'task': task_id, 'user': request.user}
                         )
                         update_tasks.append(new_params)
 

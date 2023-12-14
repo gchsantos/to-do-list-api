@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json, LetterCase
+from django.contrib.auth.models import User
 
 from to_do_list_api.messages import ReturnBaseMessage
 from .models import TaskStatus, Task
@@ -121,12 +122,15 @@ class TaskFilterParamsDataMessage:
 
 @dataclass
 class TaskUpdateParamsDataMessage:
+    user: User
     task: Optional[Union[str, Task]]
     status: Optional[str] = TaskStatus.CONCLUDED
     
     def __init__(self, **kwargs):
         status = kwargs.get("status")
         task = kwargs.get("task")
+        user = kwargs.get("user")
+
         if isinstance(status, TaskStatus):
             self.status = status
         else:
@@ -136,15 +140,17 @@ class TaskUpdateParamsDataMessage:
                 raise StatusDoesNotExistException(status)
             
         if task and UUID(task):   
-            self.task = Task.objects.get(id=kwargs.get("task"))
+            self.task = Task.objects.get(id=kwargs.get("task"), user=user)
 
 
 @dataclass
 class TaskCancelParamsDataMessage:
+    user: User
     task: Optional[Union[str, Task]]
     
     def __init__(self, **kwargs):
         task = kwargs.get("task")
+        user = kwargs.get("user")
         
         if task and UUID(task):   
-            self.task = Task.objects.get(id=kwargs.get("task"))
+            self.task = Task.objects.get(id=kwargs.get("task"), user=user)
