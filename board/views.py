@@ -1,6 +1,10 @@
 import json
 
+from django.conf import settings
 from django.db import transaction
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -29,6 +33,8 @@ from .exceptions import (
 )
 from .serializers import UserTasksSerializer
 from .models import Task, TaskStatus
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 def cleanup_user_task_filter(params: dict) -> dict:
     filter = {}
@@ -89,6 +95,7 @@ class BoardManager(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         
+    @method_decorator(cache_page(CACHE_TTL))
     def get(self, request, **kwargs):
         try:
 
