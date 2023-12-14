@@ -111,8 +111,11 @@ class BoardManager(APIView):
                     )
             else:
                 try:
+                    data = (request.query_params 
+                            if hasattr(request, 'query_params') else dict()
+                    )
                     params = from_dict(
-                        TaskFilterParamsDataMessage, request.query_params
+                        TaskFilterParamsDataMessage, data
                     )
                     filters = cleanup_user_task_filter(asdict(params))
                     user_tasks = request.user.tasks.filter(**filters)
@@ -161,7 +164,6 @@ class BoardManager(APIView):
                     update_tasks = []
                     for task in request.data:
                         task['user'] = request.user
-                        print('!!!!!!!!!!', task)
                         new_params = from_dict(
                             TaskUpdateParamsDataMessage, task
                         )
