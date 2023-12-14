@@ -33,9 +33,10 @@ class Task(models.Model):
         return TaskStatus(self.status)
 
     def update_status(self, status: TaskStatus):
-        self.status = status
-        self.updated_at = timezone.now()
-        self.save()
+        if self.status != status:
+            self.status = status
+            self.updated_at = timezone.now()
+            self.save()
 
     class Meta:
         constraints = [
