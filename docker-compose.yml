@@ -8,7 +8,7 @@ services:
     image: to_do_list_api
     command: './start-server.sh'
     env_file:
-      - .local.env
+      - prod.env
     environment:
       DJANGO_SETTINGS_MODULE: to_do_list_api.settings.production
       MODE: prod
@@ -26,7 +26,7 @@ services:
     volumes:
       - "postgres-data:/var/lib/postgresql/data"
     env_file:
-      - .local.env
+      - prod.env
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U gchsantos -d postgres" ]
       interval: 10s
@@ -55,7 +55,7 @@ services:
       '/bin/sh', '-c', 'redis-server --requirepass "$${REDIS_PASSWORD}"'
     ]
     env_file:
-      - .local.env
+      - prod.env
     ports:
       - 6379:6379
     networks:
