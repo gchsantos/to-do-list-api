@@ -2,7 +2,7 @@
 Is a project to manage your tasks using a RESTful API
 
 
-Crie o arquivo **prod.env** com as seguintes variáveis:
+Crie o arquivo **prod.env** no diretório raiz com as seguintes variáveis:
 
     SECRET_KEY=django-insecure-&qs66ex^&g70=gc@pjucoy0r$=#&*=zapxt^qc2v7rk-yet_o%
     POSTGRES_USER=gchsantos
