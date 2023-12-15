@@ -12,6 +12,7 @@ from rest_framework import status
 from dacite.exceptions import MissingValueError
 from dacite import from_dict
 from dataclasses import asdict
+from drf_spectacular.utils import extend_schema
 
 from .messages import (
     TaskInsertDataMessage,
@@ -33,6 +34,12 @@ from .exceptions import (
 )
 from .serializers import UserTasksSerializer
 from .models import Task, TaskStatus
+from .schemas import (
+    BoardManagerPostSchema,
+    BoardManagerGetSchema,
+    BoardManagerPutSchema,
+    BoardManagerDeleteSchema
+)
 
 CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
@@ -46,6 +53,11 @@ def cleanup_user_task_filter(params: dict) -> dict:
 class BoardManager(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        description=BoardManagerPostSchema.description,
+        request={"application/json": BoardManagerPostSchema.request},
+        responses=BoardManagerPostSchema.responses
+    )
     def post(self, request, **kwargs):
         try:
             try:
@@ -95,6 +107,12 @@ class BoardManager(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         
+    @extend_schema(
+        parameters=BoardManagerGetSchema.parameters,
+        description=BoardManagerGetSchema.description,
+        responses=[],
+        examples=BoardManagerGetSchema.examples,
+    )
     @method_decorator(cache_page(CACHE_TTL))
     def get(self, request, **kwargs):
         try:
@@ -135,6 +153,11 @@ class BoardManager(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
+    @extend_schema(
+        description=BoardManagerPutSchema.description,
+        request=BoardManagerPutSchema.request,
+        responses=BoardManagerPutSchema.responses
+    )
     def put(self, request, **kwargs):
         try:
             try:
@@ -193,6 +216,11 @@ class BoardManager(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
+    @extend_schema(
+        description=BoardManagerDeleteSchema.description,
+        responses={200: BoardManagerDeleteSchema.responses},
+        # request=BoardManagerPutSchema.request
+    )
     def delete(self, request, **kwargs):
         try:
             try:

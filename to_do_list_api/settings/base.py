@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     "rest_framework.authtoken",
+    'drf_spectacular',
     'board',
 ]
 
@@ -121,6 +122,7 @@ REST_FRAMEWORK = {
         "to_do_list_api.authentications.BearerAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAdminUser"),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 CACHES = {
@@ -132,4 +134,11 @@ CACHES = {
         },
         'KEY_PREFIX': 'django_orm'
     }
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'To-Do List API',
+    'DESCRIPTION': "This API manages the user's task board",
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
