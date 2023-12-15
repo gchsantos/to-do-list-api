@@ -196,7 +196,8 @@ class BoardManager(APIView):
     def delete(self, request, **kwargs):
         try:
             try:
-                if isinstance(request.data, dict):
+                request_data = request.data if hasattr(request, 'data') else {}
+                if isinstance(request_data, dict):
                     task_id = kwargs.get('task_id')
                     try:
                         cancel_task = from_dict(
