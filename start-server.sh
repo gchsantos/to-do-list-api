@@ -12,7 +12,7 @@ else
     echo '[ INFO: Success in all tests of the Application. ]'
 fi
 
-python manage.py makemigrations board
+python manage.py makemigrations
 python manage.py migrate
 
 gunicorn ${DJANGO_WSGI_MODULE}:application \
