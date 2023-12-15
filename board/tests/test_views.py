@@ -4,7 +4,6 @@ from django.http import HttpRequest
 
 from board.models import Task, TaskStatus
 from board.views import BoardManager
-from board.messages import TaskInsertDataMessage
 from board.exceptions import TaskDoesNotExistException
 
 mock_tasks = [
@@ -205,7 +204,7 @@ class BatchManagerViewTest(TestCase):
         )
         self.assertTrue(task)
 
-    def test_post_bulk_task(self):
+    def test_post_bulk_tasks(self):
         """ When request to create multiple tasks through an array \
         Then create all the tasks and returns success message \
         """
@@ -317,7 +316,7 @@ class BatchManagerViewTest(TestCase):
         updated_task = Task.objects.get(id=task_id)
         self.assertEqual(expected_new_status, updated_task.status)
 
-    def test_put_bulk_task(self):
+    def test_put_bulk_tasks(self):
         """ When request to update multiple tasks without specifying status \
         Then update all the tasks to concluded and returns success message \
         """
@@ -357,3 +356,75 @@ class BatchManagerViewTest(TestCase):
         
         self.assertTrue((titles[0] != titles[1] != titles[2]))
         self.assertListEqual(expected_new_tasks_status, status)
+
+    def test_delete(self):
+        """ When request to delete a task \
+        Then change your status to canceled and return success message \
+        """
+        
+        expected_status_code = 200
+        expected_res_type = 'TaskCancel'
+        expected_res_msg = 'The task was canceled successfully'
+        expected_res_description = 'Task cancelation in user board'
+        expected_old_status = TaskStatus.PENDING
+        expected_new_status = TaskStatus.CANCELED
+
+        task = Task.objects.create(
+            title='Realizar um stress test na api',
+            user=self.user
+        )
+        task_id = str(task.id)
+        self.assertEqual(expected_old_status, task.status)
+        self.assertFalse(task.updated_at)
+
+        response = self.view.delete(self.request, task_id=task_id)
+
+        self.assertEqual(expected_status_code, response.status_code)
+        self.assertEqual(expected_res_type, response.data.get('type'))
+        self.assertEqual(expected_res_msg, response.data.get('message'))
+        self.assertEqual(
+            expected_res_description, response.data.get('description')
+        )
+
+        updated_task = Task.objects.get(id=task_id)
+        self.assertEqual(expected_new_status, updated_task.status)
+        self.assertTrue(updated_task.updated_at)
+
+    def test_delete_bulk_tasks(self):
+        """ When request to delete multiple tasks \
+        Then change the status to canceled for all and return success message \
+        """
+        
+        expected_status_code = 200
+        expected_res_type = 'BulkTaskCancel'
+        expected_res_msg = 'The tasks was canceled successfully'
+        expected_res_description = 'Multiple tasks cancelation in user board'
+        expected_tasks_quantity = 3
+        expected_new_tasks_status = [TaskStatus.CANCELED] * 3
+
+        mocked_tasks = [
+            {"title": "bulk update 1"},
+            {"title": "bulk update 2"},
+            {"title": "bulk update 3"},
+        ]
+
+        tasks = create_mocked_tasks(mocked_tasks, self.user)
+        self.request.data = [str(task.id) for task in tasks]
+        
+        response = self.view.delete(self.request)
+
+        self.assertEqual(expected_status_code, response.status_code)
+        self.assertEqual(expected_res_type, response.data.get('type'))
+        self.assertEqual(expected_res_msg, response.data.get('message'))
+        self.assertEqual(
+            expected_res_description, response.data.get('description')
+        )
+
+        tasks = Task.objects.filter(title__icontains='bulk update')
+        self.assertEqual(expected_tasks_quantity, len(tasks))
+
+        status = [task.task_status for task in tasks]
+        updated_ats = [task.updated_at for task in tasks]
+        
+        self.assertListEqual(expected_new_tasks_status, status)
+        self.assertTrue(updated_ats[0] and updated_ats[1] and updated_ats[2])

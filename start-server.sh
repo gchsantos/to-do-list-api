@@ -5,10 +5,12 @@ NAME="to_do_list_api"
 DJANGO_WSGI_MODULE=to_do_list_api.wsgi
 NUM_WORKERS=3
 
-# if ! python manage.py test --k; then
-#     echo '[ ALERT: Application not pass in the tests. ]'
-#     exit 1
-# fi
+if ! python manage.py test --k; then
+    echo '[ ALERT: Application not pass in the tests. ]'
+    exit 1
+else
+    echo '[ INFO: Success in all tests of the Application. ]'
+fi
 
 python manage.py makemigrations board
 python manage.py migrate
